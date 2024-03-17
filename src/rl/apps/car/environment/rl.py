@@ -1,5 +1,4 @@
 import copy
-import random
 from dataclasses import dataclass
 from enum import Enum
 from typing import Tuple, Optional, List
@@ -11,50 +10,50 @@ from rl.apps.car.helpers.canvas import draw_car
 
 _DRAW_RESET_CARS = True
 
-_RESET_CAR_STATES_LONG = [  # Clockwise
-    CarState(position=(MARGIN + 2.7 * SIDE, MARGIN + 2 * SIDE), angle=90, speed=1, turn=0),
+_RESET_CAR_FACTORIES_LONG = [  # Clockwise
+    lambda: CarState(position=(MARGIN + 2.7 * SIDE, MARGIN + 2 * SIDE), angle=90, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 2.5 * SIDE, MARGIN + 0.5 * SIDE), angle=225, speed=1, turn=0),
-    CarState(position=(MARGIN + 2.8 * SIDE, MARGIN + 0.80 * SIDE), angle=45, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 2.5 * SIDE, MARGIN + 0.5 * SIDE), angle=225, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 2.8 * SIDE, MARGIN + 0.80 * SIDE), angle=45, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 5.5 * SIDE, MARGIN + 1.7 * SIDE), angle=0, speed=1, turn=0),
-    CarState(position=(MARGIN + 5.5 * SIDE, MARGIN + 1.3 * SIDE), angle=180, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 5.5 * SIDE, MARGIN + 1.7 * SIDE), angle=0, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 5.5 * SIDE, MARGIN + 1.3 * SIDE), angle=180, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 7 * SIDE, MARGIN + 0.7 * SIDE), angle=0, speed=1, turn=0),
-    CarState(position=(MARGIN + 7 * SIDE, MARGIN + 0.3 * SIDE), angle=180, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 7 * SIDE, MARGIN + 0.7 * SIDE), angle=0, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 7 * SIDE, MARGIN + 0.3 * SIDE), angle=180, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 7.8 * SIDE, MARGIN + 1.2 * SIDE), angle=135, speed=1, turn=0),
-    CarState(position=(MARGIN + 7.5 * SIDE, MARGIN + 1.5 * SIDE), angle=315, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 7.8 * SIDE, MARGIN + 1.2 * SIDE), angle=135, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 7.5 * SIDE, MARGIN + 1.5 * SIDE), angle=315, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 8.5 * SIDE, MARGIN + 1.5 * SIDE), angle=135, speed=1, turn=0),
-    CarState(position=(MARGIN + 8.2 * SIDE, MARGIN + 1.8 * SIDE), angle=315, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 8.5 * SIDE, MARGIN + 1.5 * SIDE), angle=135, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 8.2 * SIDE, MARGIN + 1.8 * SIDE), angle=315, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 8 * SIDE, MARGIN + 3.7 * SIDE), angle=0, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 8 * SIDE, MARGIN + 3.7 * SIDE), angle=0, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 7 * SIDE, MARGIN + 3.3 * SIDE), angle=180, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 7 * SIDE, MARGIN + 3.3 * SIDE), angle=180, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 4 * SIDE, MARGIN + 3.7 * SIDE), angle=0, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 4 * SIDE, MARGIN + 3.7 * SIDE), angle=0, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 5.7 * SIDE, MARGIN + 5 * SIDE), angle=90, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 5.7 * SIDE, MARGIN + 5 * SIDE), angle=90, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 4 * SIDE, MARGIN + 3.3 * SIDE), angle=180, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 4 * SIDE, MARGIN + 3.3 * SIDE), angle=180, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 1 * SIDE, MARGIN + 3.7 * SIDE), angle=0, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 1 * SIDE, MARGIN + 3.7 * SIDE), angle=0, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 2.7 * SIDE, MARGIN + 4.7 * SIDE), angle=90, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 2.7 * SIDE, MARGIN + 4.7 * SIDE), angle=90, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 2.3 * SIDE, MARGIN + 2.0 * SIDE), angle=270, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 2.3 * SIDE, MARGIN + 2.0 * SIDE), angle=270, speed=1, turn=0),
 ]
 
-_RESET_CAR_STATES_SHORT = [  # Clockwise
-    CarState(position=(MARGIN + 8.5 * SIDE, MARGIN + 1.5 * SIDE), angle=135, speed=1, turn=0),
-    CarState(position=(MARGIN + 8.2 * SIDE, MARGIN + 1.8 * SIDE), angle=315, speed=1, turn=0),
+_RESET_CAR_FACTORIES_SHORT = [  # Clockwise
+    lambda: CarState(position=(MARGIN + 8.5 * SIDE, MARGIN + 1.5 * SIDE), angle=135, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 8.2 * SIDE, MARGIN + 1.8 * SIDE), angle=315, speed=1, turn=0),
     ##############################
-    CarState(position=(MARGIN + 4 * SIDE, MARGIN + 3.7 * SIDE), angle=0, speed=1, turn=0),
-    CarState(position=(MARGIN + 4 * SIDE, MARGIN + 3.3 * SIDE), angle=180, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 4 * SIDE, MARGIN + 3.7 * SIDE), angle=0, speed=1, turn=0),
+    lambda: CarState(position=(MARGIN + 4 * SIDE, MARGIN + 3.3 * SIDE), angle=180, speed=1, turn=0),
 ]
 
-_RESET_CAR_STATES = _RESET_CAR_STATES_SHORT
+_RESET_CAR_FACTORIES = _RESET_CAR_FACTORIES_SHORT
 
 
 class RlEnvironmentMode(Enum):
@@ -94,36 +93,36 @@ class RlEnvironment:
 
         self.history.append(RlEnvironmentHistoryItem(action, state, observation, reward))
         if _DRAW_RESET_CARS:
-            for reset_car in _RESET_CAR_STATES:
-                draw_car(state.view, reset_car)
+            for reset_car_factory in _RESET_CAR_FACTORIES:
+                draw_car(state.view, reset_car_factory())
         return state, observation, reward, done
 
     def _pick_reset_car(self) -> CarState:
         if self.mode == RlEnvironmentMode.ORDERED_WITH_CRASH_REPLAY:
-            if self.total_resets % len(_RESET_CAR_STATES) != 0:
+            if self.total_resets % len(_RESET_CAR_FACTORIES) != 0:
                 raise ValueError(
                     f"When using {self.mode.name}, total resets (currently {self.total_resets})"
-                    f"must be divisible by reset car states (currently {len(_RESET_CAR_STATES)})"
+                    f"must be divisible by reset car factories (currently {len(_RESET_CAR_FACTORIES)})"
                 )
 
-            resets_per_car_state = self.total_resets // len(_RESET_CAR_STATES)
+            resets_per_car_state = self.total_resets // len(_RESET_CAR_FACTORIES)
             car_state_index: int = self.reset_index // resets_per_car_state
             previous_car_state_index = (self.reset_index - 1) // resets_per_car_state
             if car_state_index == previous_car_state_index:
                 result = self._get_car_before_crash()
             else:
-                result = _RESET_CAR_STATES[car_state_index]
+                result = _RESET_CAR_FACTORIES[car_state_index]()
         else:
             raise NotImplementedError
 
         return result
 
-    def _get_car_before_crash(self, steps_into_past: int = 10):
-        result = self.history[0].state.car
+    def _get_car_before_crash(self, steps_into_past: int = 10) -> CarState:
+        result = copy.deepcopy(self.history[0].state.car)
         skipped = set()
         for item in reversed(self.history):
             if item.state.car.position not in skipped:
-                result = item.state.car
+                result = copy.deepcopy(item.state.car)
                 if steps_into_past == 0:
                     break
                 else:

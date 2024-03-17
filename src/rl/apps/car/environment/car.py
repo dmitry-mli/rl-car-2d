@@ -1,5 +1,4 @@
 import copy
-import random
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Tuple
@@ -7,6 +6,7 @@ from typing import Optional, Tuple
 from rl.apps.car.common.constants import CAR_MAX_TURN, CAR_MIN_TURN, CAR_MAX_SPEED, CAR_MIN_SPEED, \
     CAR_TURN_DEGREES_PER_FRAME, CAR_SPEED_PIXELS_PER_FRAME, MARGIN, ACTION_AREA, SIDE, ROAD_MAP
 from rl.apps.car.common.types import Vector, AngleDegrees, Rectangle, Shape
+from rl.apps.car.environment.driver import DriverState
 from rl.apps.car.utils.map import get_tile, road_next_tile, get_adjacent_tiles, get_tile_position, get_shape
 from rl.apps.car.utils.math_util import advance
 from rl.apps.car.utils.shapes import constraint_position, rectangle_contains
@@ -58,6 +58,7 @@ class CarState:
     decelerating: bool = False
     steps_stopped: int = 0
     events: Events = field(default_factory=Events)
+    driver: DriverState = field(default_factory=DriverState)
 
 
 @dataclass
@@ -109,7 +110,7 @@ def _to_state(state: CarState, action: Optional[Action] = None) -> CarState:
 
     # Events
     if not result.events.crossroad or not rectangle_contains(result.events.crossroad.blink_area, result.position):
-        result.events.crossroad = _check_crossroad_event(result.position)
+        result.events.crossroad = _check_crossroad_event(state.driver, result.position)
 
     return result
 
@@ -126,7 +127,7 @@ def _to_done(state: CarState) -> bool:
     return state.steps_stopped >= _STALE_COUNTER
 
 
-def _check_crossroad_event(position: Vector) -> Optional[CrossroadEvent]:
+def _check_crossroad_event(driver: DriverState, position: Vector) -> Optional[CrossroadEvent]:
     result = None
     tile_col, tile_row = get_tile(position)
     if next_tile := road_next_tile(position, ROAD_MAP[tile_row][tile_col]):
@@ -138,7 +139,7 @@ def _check_crossroad_event(position: Vector) -> Optional[CrossroadEvent]:
             if option != (current_tile_col, current_tile_row)
         ]
         if len(next_tile_options) > 1:  # Has turns
-            next_tile_option = random.choice(next_tile_options)
+            next_tile_option = driver.choose(next_tile_options)
             (next_tile_option_col, next_tile_option_row) = next_tile_option
             next_tile_option_direction = (next_tile_option_col - next_tile_col, next_tile_option_row - next_tile_row)
             car_direction = (next_tile_col - current_tile_col, next_tile_row - current_tile_row)
