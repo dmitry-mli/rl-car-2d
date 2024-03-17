@@ -118,6 +118,7 @@ class Trainer:
 
             environment = RlEnvironment(
                 mode=hyper_params.environment_mode,
+                total_resets=hyper_params.max_batches,
             )
 
             for batch in range(hyper_params.max_batches):

@@ -58,10 +58,7 @@ _RESET_CAR_STATES = _RESET_CAR_STATES_SHORT
 
 
 class RlEnvironmentMode(Enum):
-    RANDOM = 1
-    RANDOM_ONCE = 2
-    RANDOM_THEN_BEFORE_CRASH = 3
-    ORDERED_THEN_BEFORE_CRASH = 4
+    ORDERED_WITH_CRASH_REPLAY = 4
 
 
 @dataclass
@@ -73,15 +70,23 @@ class RlEnvironmentHistoryItem:
 
 
 class RlEnvironment:
-    def __init__(self, mode: RlEnvironmentMode):
+    def __init__(
+            self,
+            mode: RlEnvironmentMode,
+            total_resets: int,
+    ):
         self.mode = mode
+        self.total_resets = total_resets
+
+        self.reset_index = 0
         self.history: List[RlEnvironmentHistoryItem] = []
 
     def reset(self) -> Tuple[State, Observation]:
-        state, observation = reset_environment(self._pick_reset_seed())
+        state, observation = reset_environment(self._pick_reset_car())
 
         self.history.clear()
         self.history.append(RlEnvironmentHistoryItem(None, state, observation, None))
+        self.reset_index += 1
         return state, observation
 
     def step(self, action: Action) -> Tuple[State, Observation, float, float]:
@@ -93,27 +98,21 @@ class RlEnvironment:
                 draw_car(state.view, reset_car)
         return state, observation, reward, done
 
-    def _pick_reset_seed(self) -> CarState:
-        if self.mode == RlEnvironmentMode.RANDOM:
-            result = copy.deepcopy(random.choice(_RESET_CAR_STATES))
-        elif self.mode == RlEnvironmentMode.RANDOM_ONCE:
-            result = copy.deepcopy(
-                self.history[0].state.car
-                if self.history
-                else random.choice(_RESET_CAR_STATES)
-            )
-        elif self.mode == RlEnvironmentMode.RANDOM_THEN_BEFORE_CRASH:
-            result = (
-                self._get_car_before_crash()
-                if self.history
-                else random.choice(_RESET_CAR_STATES)
-            )
-        elif self.mode == RlEnvironmentMode.ORDERED_THEN_BEFORE_CRASH:
-            result = (
-                self._get_car_before_crash()
-                if self.history
-                else random.choice(_RESET_CAR_STATES)
-            )
+    def _pick_reset_car(self) -> CarState:
+        if self.mode == RlEnvironmentMode.ORDERED_WITH_CRASH_REPLAY:
+            if self.total_resets % len(_RESET_CAR_STATES) != 0:
+                raise ValueError(
+                    f"When using {self.mode.name}, total resets (currently {self.total_resets})"
+                    f"must be divisible by reset car states (currently {len(_RESET_CAR_STATES)})"
+                )
+
+            resets_per_car_state = self.total_resets // len(_RESET_CAR_STATES)
+            car_state_index: int = self.reset_index // resets_per_car_state
+            previous_car_state_index = (self.reset_index - 1) // resets_per_car_state
+            if car_state_index == previous_car_state_index:
+                result = self._get_car_before_crash()
+            else:
+                result = _RESET_CAR_STATES[car_state_index]
         else:
             raise NotImplementedError
 

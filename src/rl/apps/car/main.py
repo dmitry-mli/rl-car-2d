@@ -53,11 +53,11 @@ def run_training_plan():
             # 0,
             1e-5,
         ]
-        for max_batches in [50]
+        for max_batches in [60]
         for max_episodes in [10000]
 
         # Environment
-        for environment_mode in [RlEnvironmentMode.RANDOM_THEN_BEFORE_CRASH]
+        for environment_mode in [RlEnvironmentMode.ORDERED_WITH_CRASH_REPLAY]
 
         # Model
         for vision_dropout in [
