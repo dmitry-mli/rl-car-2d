@@ -9,7 +9,7 @@
       <env name="DEVICE" value="mps" />
     </envs>
     <option name="SDK_HOME" value="$PROJECT_DIR$/venv/bin/python" />
-    <option name="SDK_NAME" value="Python 3.8 (rl-car-2d)" />
+    <option name="SDK_NAME" value="Python 3.9 (rl-car-2d)" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/rl/apps/car" />
     <option name="IS_MODULE_SDK" value="true" />
     <option name="ADD_CONTENT_ROOTS" value="true" />

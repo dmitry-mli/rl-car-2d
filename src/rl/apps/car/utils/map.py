@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-from convolution.main import Position
 from rl.apps.car.common.constants import SIDE, MARGIN, PAD, HALF, ROAD_MAP
 from rl.apps.car.common.types import Vector, Shape
 from rl.apps.car.utils.math_util import distance
@@ -128,7 +127,7 @@ def get_adjacent_tiles(tile: Vector) -> List[Vector]:
     return result
 
 
-def road_next_tile(position: Position, shape: Shape) -> Optional[Vector]:
+def road_next_tile(position: Vector, shape: Shape) -> Optional[Vector]:
     tile_col, tile_row = get_tile(position)
     tile_x, tile_y = get_tile_position((tile_col, tile_row))
 

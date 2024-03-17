@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Tuple
 
-from convolution.main import Position
 from rl.apps.car.common.constants import CAR_MAX_TURN, CAR_MIN_TURN, CAR_MAX_SPEED, CAR_MIN_SPEED, \
     CAR_TURN_DEGREES_PER_FRAME, CAR_SPEED_PIXELS_PER_FRAME, MARGIN, ACTION_AREA, SIDE, ROAD_MAP
 from rl.apps.car.common.types import Vector, AngleDegrees, Rectangle, Shape
@@ -127,7 +126,7 @@ def _to_done(state: CarState) -> bool:
     return state.steps_stopped >= _STALE_COUNTER
 
 
-def _check_crossroad_event(position: Position) -> Optional[CrossroadEvent]:
+def _check_crossroad_event(position: Vector) -> Optional[CrossroadEvent]:
     result = None
     tile_col, tile_row = get_tile(position)
     if next_tile := road_next_tile(position, ROAD_MAP[tile_row][tile_col]):
