@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 import os
 import time
@@ -35,6 +37,17 @@ class Metrics:
         self.max_loss = max(self.max_loss, loss)
 
 
+class HyperParamsOutput(dict):
+    @staticmethod
+    def to_csv(outputs: List["HyperParamsOutput"]) -> str:
+        with io.StringIO() as result:
+            writer = csv.writer(result)
+            writer.writerow(outputs[0].keys())
+            for output in outputs:
+                writer.writerow(output.values())
+            return result.getvalue()
+
+
 @dataclass
 class HyperParams:
     dry_run: bool
@@ -47,24 +60,22 @@ class HyperParams:
     model: SelfDrivingCarModelParams
     epoch_state_return_threshold: int
 
-    def to_label(self, metrics: Metrics, took: float):
-        result = " | ".join((
-            f"ret {metrics.max_return:5.0f}",
-            f"loss {metrics.max_loss:5.0f}",
-            f"took {took / 60:5.1f}m",
-            f"e {self.epochs:4}",
-            f"b {self.max_batches:3}",
-            f"ep {self.max_episodes:5}",
-            f"lr {self.learning_rate:5.0e}",
-            f"wd {self.weight_decay:5.0e}",
-            f"v {self.model.vision_dimensions}",
-            f"v_dr {self.model.vision_dropout:3}",
-            f"d {self.model.decision_dimensions}",
-            f"d_dr {self.model.decision_dropout:3}",
-            f"d_rsdl {self.model.decision_residual}",
-            timestamp(),
-        ))
-        return result
+    def to_output(self, metrics: Metrics, took: float) -> HyperParamsOutput:
+        return HyperParamsOutput({
+            "ret": f"{metrics.max_return:5.0f}",
+            "loss": f"{metrics.max_loss:5.0f}",
+            "took": f"{took / 60:5.1f}m",
+            "e": f"{self.epochs:4}",
+            "b": f"{self.max_batches:3}",
+            "ep": f"{self.max_episodes:5}",
+            "lr": f"{self.learning_rate:5.0e}",
+            "wd": f"{self.weight_decay:5.0e}",
+            "v": f"{self.model.vision_dimensions}",
+            "v_dr": f"{self.model.vision_dropout:3}",
+            "d": f"{self.model.decision_dimensions}",
+            "d_dr": f"{self.model.decision_dropout:3}",
+            "d_rsdl": f"{self.model.decision_residual}",
+        })
 
 
 class Trainer:
@@ -75,6 +86,8 @@ class Trainer:
 
     def run_hyper_params_list(self, hyper_param_list: List[HyperParams]):
         hyper_params_list_metrics = Metrics()
+        outputs: List[HyperParamsOutput] = []
+
         for index, hyper_params in enumerate(hyper_param_list, start=1):
             hyper_params_metrics = Metrics()
             start = time.time()
@@ -85,7 +98,9 @@ class Trainer:
                 )
                 out_filepaths = self._run_hyper_params(hyper_params, hyper_params_metrics, hyper_params_list_metrics)
 
-                label = hyper_params.to_label(hyper_params_metrics, took := (time.time() - start))
+                output = hyper_params.to_output(hyper_params_metrics, took := (time.time() - start))
+                outputs.append(output)
+                label = " | ".join([f"ret {output['ret']}", timestamp()])
                 print(
                     f"{timestamp()}: Finished hyper params {index}/{len(hyper_param_list)}. "
                     f"Took: {took:0.1f}s. "
@@ -93,8 +108,12 @@ class Trainer:
                 )
 
             if not hyper_params.dry_run:
+                # Session
                 log_filepath = save_file(self._out_path, f"log.txt", buffer.get())
                 move_files(out_filepaths + [log_filepath], os.path.join(self._out_path, label))
+
+                # Summary
+                save_file(self._out_path, f"summary.csv", HyperParamsOutput.to_csv(outputs))
 
     def _run_hyper_params(
             self,

@@ -57,7 +57,7 @@ _RESET_CAR_FACTORIES = _RESET_CAR_FACTORIES_SHORT
 
 
 class RlEnvironmentMode(Enum):
-    ORDERED_WITH_CRASH_REPLAY = 4
+    ORDERED_WITH_CRASH_REPLAY = 1
 
 
 @dataclass
