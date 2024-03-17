@@ -9,8 +9,9 @@ from rl.apps.car.environment.car import Action, CarState
 from rl.apps.car.environment.environment import State, Observation, reset_environment, step_environment
 from rl.apps.car.helpers.canvas import draw_car
 
-_DRAW_RESET_CARS = False
-_RESET_CAR_STATES = [  # Clockwise
+_DRAW_RESET_CARS = True
+
+_RESET_CAR_STATES_LONG = [  # Clockwise
     CarState(position=(MARGIN + 2.7 * SIDE, MARGIN + 2 * SIDE), angle=90, speed=1, turn=0),
     ##############################
     CarState(position=(MARGIN + 2.5 * SIDE, MARGIN + 0.5 * SIDE), angle=225, speed=1, turn=0),
@@ -45,11 +46,22 @@ _RESET_CAR_STATES = [  # Clockwise
     CarState(position=(MARGIN + 2.3 * SIDE, MARGIN + 2.0 * SIDE), angle=270, speed=1, turn=0),
 ]
 
+_RESET_CAR_STATES_SHORT = [  # Clockwise
+    CarState(position=(MARGIN + 8.5 * SIDE, MARGIN + 1.5 * SIDE), angle=135, speed=1, turn=0),
+    CarState(position=(MARGIN + 8.2 * SIDE, MARGIN + 1.8 * SIDE), angle=315, speed=1, turn=0),
+    ##############################
+    CarState(position=(MARGIN + 4 * SIDE, MARGIN + 3.7 * SIDE), angle=0, speed=1, turn=0),
+    CarState(position=(MARGIN + 4 * SIDE, MARGIN + 3.3 * SIDE), angle=180, speed=1, turn=0),
+]
+
+_RESET_CAR_STATES = _RESET_CAR_STATES_SHORT
+
 
 class RlEnvironmentResetMode(Enum):
     RANDOM = 1
     RANDOM_ONCE = 2
     RANDOM_THEN_BEFORE_CRASH = 3
+    ORDERED_THEN_BEFORE_CRASH = 4
 
 
 @dataclass
@@ -91,23 +103,31 @@ class RlEnvironment:
                 else random.choice(_RESET_CAR_STATES)
             )
         elif self.reset_mode == RlEnvironmentResetMode.RANDOM_THEN_BEFORE_CRASH:
-            reset_position_margin = 10
-            skipped = set()
-            for item in reversed(self.history):
-                if item.state.car.position not in skipped:
-                    reset_car = item.state.car
-                    if reset_position_margin == 0:
-                        break
-                    else:
-                        skipped.add(item.state.car.position)
-                        reset_position_margin -= 1
-
             result = (
-                reset_car
+                self._get_car_before_crash()
+                if self.history
+                else random.choice(_RESET_CAR_STATES)
+            )
+        elif self.reset_mode == RlEnvironmentResetMode.ORDERED_THEN_BEFORE_CRASH:
+            result = (
+                self._get_car_before_crash()
                 if self.history
                 else random.choice(_RESET_CAR_STATES)
             )
         else:
             raise NotImplementedError
 
+        return result
+
+    def _get_car_before_crash(self, steps_into_past: int = 10):
+        result = self.history[0].state.car
+        skipped = set()
+        for item in reversed(self.history):
+            if item.state.car.position not in skipped:
+                result = item.state.car
+                if steps_into_past == 0:
+                    break
+                else:
+                    skipped.add(item.state.car.position)
+                    steps_into_past -= 1
         return result
