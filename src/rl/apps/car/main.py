@@ -5,7 +5,7 @@ import pygame
 
 from rl.apps.car.common.constants import OBSERVATION_INPUT_SIDE
 from rl.apps.car.environment.car import Action
-from rl.apps.car.environment.rl import RlEnvironmentResetMode
+from rl.apps.car.environment.rl import RlEnvironmentMode
 from rl.apps.car.helpers.trainer import HyperParams, Trainer
 from rl.apps.car.model.model import SelfDrivingCarModelParams
 
@@ -23,7 +23,7 @@ def run_training_plan():
             weight_decay=weight_decay,
             max_batches=max_batches,
             max_episodes=max_episodes,
-            environment_reset_mode=reset_mode,
+            environment_mode=environment_mode,
             model=SelfDrivingCarModelParams(
                 vision_dimensions=vision_dimensions,
                 vision_dropout=vision_dropout,
@@ -57,7 +57,7 @@ def run_training_plan():
         for max_episodes in [10000]
 
         # Environment
-        for reset_mode in [RlEnvironmentResetMode.RANDOM_THEN_BEFORE_CRASH]
+        for environment_mode in [RlEnvironmentMode.RANDOM_THEN_BEFORE_CRASH]
 
         # Model
         for vision_dropout in [

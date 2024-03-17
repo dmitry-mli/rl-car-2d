@@ -14,7 +14,7 @@ from torch import Tensor
 from rl.apps.car.common.constants import CAR_MIN_SPEED, CAR_MAX_SPEED, CAR_MIN_TURN, CAR_MAX_TURN
 from rl.apps.car.environment.car import Action
 from rl.apps.car.environment.environment import Observation
-from rl.apps.car.environment.rl import RlEnvironmentResetMode, RlEnvironment
+from rl.apps.car.environment.rl import RlEnvironmentMode, RlEnvironment
 from rl.apps.car.helpers.display import Display
 from rl.apps.car.helpers.keyboard import Keyboard
 from rl.apps.car.model.model import SelfDrivingCarModelParams, SelfDrivingCarModel
@@ -43,7 +43,7 @@ class HyperParams:
     weight_decay: float
     max_batches: int
     max_episodes: int
-    environment_reset_mode: RlEnvironmentResetMode
+    environment_mode: RlEnvironmentMode
     model: SelfDrivingCarModelParams
     epoch_state_return_threshold: int
 
@@ -116,7 +116,9 @@ class Trainer:
             epoch_rewards: List[List[float]] = []
             epoch_weights: List[List[float]] = []
 
-            environment = RlEnvironment(hyper_params.environment_reset_mode)
+            environment = RlEnvironment(
+                mode=hyper_params.environment_mode,
+            )
 
             for batch in range(hyper_params.max_batches):
                 batch_observations: List[Tensor] = []

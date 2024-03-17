@@ -57,7 +57,7 @@ _RESET_CAR_STATES_SHORT = [  # Clockwise
 _RESET_CAR_STATES = _RESET_CAR_STATES_SHORT
 
 
-class RlEnvironmentResetMode(Enum):
+class RlEnvironmentMode(Enum):
     RANDOM = 1
     RANDOM_ONCE = 2
     RANDOM_THEN_BEFORE_CRASH = 3
@@ -73,8 +73,8 @@ class RlEnvironmentHistoryItem:
 
 
 class RlEnvironment:
-    def __init__(self, reset_mode: RlEnvironmentResetMode):
-        self.reset_mode = reset_mode
+    def __init__(self, mode: RlEnvironmentMode):
+        self.mode = mode
         self.history: List[RlEnvironmentHistoryItem] = []
 
     def reset(self) -> Tuple[State, Observation]:
@@ -94,21 +94,21 @@ class RlEnvironment:
         return state, observation, reward, done
 
     def _pick_reset_seed(self) -> CarState:
-        if self.reset_mode == RlEnvironmentResetMode.RANDOM:
+        if self.mode == RlEnvironmentMode.RANDOM:
             result = copy.deepcopy(random.choice(_RESET_CAR_STATES))
-        elif self.reset_mode == RlEnvironmentResetMode.RANDOM_ONCE:
+        elif self.mode == RlEnvironmentMode.RANDOM_ONCE:
             result = copy.deepcopy(
                 self.history[0].state.car
                 if self.history
                 else random.choice(_RESET_CAR_STATES)
             )
-        elif self.reset_mode == RlEnvironmentResetMode.RANDOM_THEN_BEFORE_CRASH:
+        elif self.mode == RlEnvironmentMode.RANDOM_THEN_BEFORE_CRASH:
             result = (
                 self._get_car_before_crash()
                 if self.history
                 else random.choice(_RESET_CAR_STATES)
             )
-        elif self.reset_mode == RlEnvironmentResetMode.ORDERED_THEN_BEFORE_CRASH:
+        elif self.mode == RlEnvironmentMode.ORDERED_THEN_BEFORE_CRASH:
             result = (
                 self._get_car_before_crash()
                 if self.history
