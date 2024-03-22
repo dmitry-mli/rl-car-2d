@@ -4,7 +4,7 @@ import json
 import os
 import time
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Collection
 
 import numpy as np
 import pygame
@@ -24,20 +24,27 @@ from rl.apps.car.model.rl import RlModel
 from rl.apps.car.utils.device import to_device
 from rl.apps.car.utils.files import move_files, save_state, save_file
 from rl.apps.car.utils.tee import capture_stdout
-from rl.apps.car.utils.timestamp import timestamp
+from rl.apps.car.utils.timestamp import get_timestamp
 
 
 class Metrics:
     def __init__(self):
-        self.max_return = 0.
+        self.max_reward = 0.
         self.max_loss = 0.
+        self.improvements = 0
+        self.took = 0.
 
-    def update(self, return_: float, loss: float):
-        self.max_return = max(self.max_return, return_)
+    def update(self, reward: float, loss: float, improvements: int, took: float):
+        self.max_reward = max(self.max_reward, reward)
         self.max_loss = max(self.max_loss, loss)
+        self.improvements = max(self.improvements, improvements)
+        self.took += took
 
 
 class HyperParamsOutput(dict):
+    def to_label(self, fields: Collection[str]) -> str:
+        return " | ".join([f"{key} {self[key]}" for key in fields])
+
     @staticmethod
     def to_csv(outputs: List["HyperParamsOutput"]) -> str:
         with io.StringIO() as result:
@@ -58,13 +65,15 @@ class HyperParams:
     max_episodes: int
     environment_mode: RlEnvironmentMode
     model: SelfDrivingCarModelParams
-    epoch_state_return_threshold: int
+    epoch_state_reward_threshold: int
 
-    def to_output(self, metrics: Metrics, took: float) -> HyperParamsOutput:
+    def to_output(self, metrics: Metrics, timestamp: str) -> HyperParamsOutput:
         return HyperParamsOutput({
-            "ret": f"{metrics.max_return:5.0f}",
+            "ts": timestamp,
+            "ret": f"{metrics.max_reward:5.0f}",
+            "imp": f"{metrics.improvements:5.0f}",
             "loss": f"{metrics.max_loss:5.0f}",
-            "took": f"{took / 60:5.1f}m",
+            "took": f"{metrics.took:5.1f}s",
             "e": f"{self.epochs:4}",
             "b": f"{self.max_batches:3}",
             "ep": f"{self.max_episodes:5}",
@@ -82,7 +91,7 @@ class Trainer:
     def __init__(self, path: str):
         self._keyboard = Keyboard()
         self._display = Display(self._keyboard)
-        self._out_path = os.path.join(path, timestamp())
+        self._out_path = os.path.join(path, get_timestamp())
 
     def run_hyper_params_list(self, hyper_param_list: List[HyperParams]):
         hyper_params_list_metrics = Metrics()
@@ -90,22 +99,17 @@ class Trainer:
 
         for index, hyper_params in enumerate(hyper_param_list, start=1):
             hyper_params_metrics = Metrics()
-            start = time.time()
             with capture_stdout() as buffer:  # Duplicates all print() output also into buffer
                 print(
-                    f"{timestamp()}: Starting hyper params {index}/{len(hyper_param_list)}. "
+                    f"{get_timestamp()}: Starting hyper params {index}/{len(hyper_param_list)}. "
                     f"Params: {json.dumps(unstructure(hyper_params))}"
                 )
                 out_filepaths = self._run_hyper_params(hyper_params, hyper_params_metrics, hyper_params_list_metrics)
 
-                output = hyper_params.to_output(hyper_params_metrics, took := (time.time() - start))
+                output = hyper_params.to_output(hyper_params_metrics, get_timestamp())
                 outputs.append(output)
-                label = " | ".join([f"ret {output['ret']}", timestamp()])
-                print(
-                    f"{timestamp()}: Finished hyper params {index}/{len(hyper_param_list)}. "
-                    f"Took: {took:0.1f}s. "
-                    f"Label: '{label}'"
-                )
+                label = output.to_label(["ret", "imp", "ts"])
+                print(f"{get_timestamp()}: Finished hyper params {index}/{len(hyper_param_list)}. Label: '{label}'")
 
             if not hyper_params.dry_run:
                 # Session
@@ -128,6 +132,7 @@ class Trainer:
             learning_rate=hyper_params.learning_rate,
             weight_decay=hyper_params.weight_decay,
         )
+        improvements = 0
         for epoch in range(hyper_params.epochs):
             epoch_start = time.time()
             epoch_observations: List[List[Tensor]] = []
@@ -171,24 +176,30 @@ class Trainer:
                 if self._keyboard.is_pressed([pygame.K_e, pygame.K_s]):
                     break
 
-            epoch_return = float(np.mean([sum(batch) for batch in epoch_rewards]))
+            epoch_reward = float(np.mean([sum(batch) for batch in epoch_rewards]))
             epoch_loss = model.backprop(
                 [el for batch in epoch_observations for el in batch],
                 [el for batch in epoch_actions for el in batch],
                 [el for batch in epoch_weights for el in batch],
             )
-            hyper_params_metrics.update(epoch_return, epoch_loss)
-            hyper_param_list_metrics.update(epoch_return, epoch_loss)
+            epoch_took = time.time() - epoch_start
+
+            improvements += 1 if (epoch_reward > hyper_params_metrics.max_reward) else 0
+            epoch_metrics = Metrics()
+            epoch_metrics.update(epoch_reward, epoch_loss, improvements, epoch_took)
+            hyper_params_metrics.update(epoch_reward, epoch_loss, improvements, epoch_took)
+            hyper_param_list_metrics.update(epoch_reward, epoch_loss, improvements, epoch_took)
 
             print(" | ".join((
-                f"{timestamp()}",
+                f"{get_timestamp()}",
                 f"epoch {epoch :4}",
-                f"return {epoch_return :5.0f} -> {hyper_params_metrics.max_return:5.0f} -> {hyper_param_list_metrics.max_return:5.0f}",
-                f"loss {epoch_loss :5.0f} -> {hyper_params_metrics.max_loss:5.0f} -> {hyper_param_list_metrics.max_loss:5.0f}",
-                f"took {(time.time() - epoch_start) :5.1f}s",
+                f"imp {epoch_metrics.improvements :3.0f} -> {hyper_params_metrics.improvements:3.0f} -> {hyper_param_list_metrics.improvements:3.0f}",
+                f"reward {epoch_metrics.max_reward :5.0f} -> {hyper_params_metrics.max_reward:5.0f} -> {hyper_param_list_metrics.max_reward:5.0f}",
+                f"loss {epoch_metrics.max_loss :5.0f} -> {hyper_params_metrics.max_loss:5.0f} -> {hyper_param_list_metrics.max_loss:5.0f}",
+                f"took {epoch_metrics.took:5.1f}s -> {hyper_params_metrics.took:5.1f}s -> {hyper_param_list_metrics.took:5.1f}s",
             )))
-            if not hyper_params.dry_run and epoch_return >= hyper_params.epoch_state_return_threshold:
-                filename = f"state_epoch{epoch}_return{epoch_return:.0f}.pth"
+            if not hyper_params.dry_run and epoch_reward >= hyper_params.epoch_state_reward_threshold:
+                filename = f"state_epoch{epoch}_reward{epoch_reward:.0f}.pth"
                 file_paths.append(save_state(self._out_path, filename, model.model))
             if self._keyboard.is_pressed([pygame.K_s]):
                 break
